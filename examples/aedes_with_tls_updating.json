@@ -1,0 +1,335 @@
+[
+    {
+        "id": "2646b173d9719fae",
+        "type": "tab",
+        "label": "Flow 4",
+        "disabled": false,
+        "info": "",
+        "env": []
+    },
+    {
+        "id": "76413442f5d2f1e0",
+        "type": "inject",
+        "z": "2646b173d9719fae",
+        "name": "each 24 hours",
+        "props": [],
+        "repeat": "86400",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "x": 140,
+        "y": 120,
+        "wires": [
+            [
+                "f339436a1e2ccfc4"
+            ]
+        ]
+    },
+    {
+        "id": "f339436a1e2ccfc4",
+        "type": "file in",
+        "z": "2646b173d9719fae",
+        "name": "",
+        "filename": "/home/ubuntu/data/server.crt",
+        "filenameType": "str",
+        "format": "utf8",
+        "chunk": false,
+        "sendError": false,
+        "encoding": "none",
+        "allProps": false,
+        "x": 380,
+        "y": 120,
+        "wires": [
+            [
+                "8e2a347fd3441bfe"
+            ]
+        ]
+    },
+    {
+        "id": "8e2a347fd3441bfe",
+        "type": "function",
+        "z": "2646b173d9719fae",
+        "name": "tls_certificate",
+        "func": "msg.tls_certificate = msg.payload;\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 330,
+        "y": 160,
+        "wires": [
+            [
+                "2c7df3e2b211286f"
+            ]
+        ]
+    },
+    {
+        "id": "2c7df3e2b211286f",
+        "type": "file in",
+        "z": "2646b173d9719fae",
+        "name": "",
+        "filename": "/home/ubuntu/data/server.key",
+        "filenameType": "str",
+        "format": "utf8",
+        "chunk": false,
+        "sendError": false,
+        "encoding": "none",
+        "allProps": false,
+        "x": 390,
+        "y": 200,
+        "wires": [
+            [
+                "e809db3344a08d21"
+            ]
+        ]
+    },
+    {
+        "id": "e809db3344a08d21",
+        "type": "function",
+        "z": "2646b173d9719fae",
+        "name": "tls_private_key",
+        "func": "msg.tls_private_key = msg.payload;\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 340,
+        "y": 240,
+        "wires": [
+            [
+                "bcb88f99c985d502"
+            ]
+        ]
+    },
+    {
+        "id": "8a17b7855e09cdaa",
+        "type": "mqtt in",
+        "z": "2646b173d9719fae",
+        "name": "Subscriber",
+        "topic": "#",
+        "qos": "0",
+        "datatype": "auto-detect",
+        "broker": "0c8942358196da6d",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 600,
+        "y": 380,
+        "wires": [
+            [
+                "27dbb00570e00438"
+            ]
+        ]
+    },
+    {
+        "id": "bcb88f99c985d502",
+        "type": "aedes broker with updatable tls",
+        "z": "2646b173d9719fae",
+        "name": "",
+        "mqtt_port": "8883",
+        "mqtt_ws_bind": "port",
+        "mqtt_ws_port": "",
+        "mqtt_ws_path": "",
+        "cert": "",
+        "key": "",
+        "certname": "",
+        "keyname": "",
+        "persistence_bind": "memory",
+        "dburl": "",
+        "usetls": true,
+        "x": 410,
+        "y": 280,
+        "wires": [
+            [
+                "8701fbd275815212"
+            ],
+            [
+                "5e80d81850fe518e"
+            ]
+        ]
+    },
+    {
+        "id": "3359d75df5e77845",
+        "type": "debug",
+        "z": "2646b173d9719fae",
+        "name": "",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 290,
+        "y": 460,
+        "wires": []
+    },
+    {
+        "id": "d3846852bef2d8a6",
+        "type": "status",
+        "z": "2646b173d9719fae",
+        "name": "",
+        "scope": [
+            "8a17b7855e09cdaa",
+            "bcb88f99c985d502"
+        ],
+        "x": 120,
+        "y": 460,
+        "wires": [
+            [
+                "3359d75df5e77845"
+            ]
+        ]
+    },
+    {
+        "id": "27dbb00570e00438",
+        "type": "debug",
+        "z": "2646b173d9719fae",
+        "name": "",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 770,
+        "y": 380,
+        "wires": []
+    },
+    {
+        "id": "8701fbd275815212",
+        "type": "debug",
+        "z": "2646b173d9719fae",
+        "name": "Broker Status events",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 720,
+        "y": 240,
+        "wires": []
+    },
+    {
+        "id": "5e80d81850fe518e",
+        "type": "debug",
+        "z": "2646b173d9719fae",
+        "name": "Broker Publish events",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 720,
+        "y": 320,
+        "wires": []
+    },
+    {
+        "id": "cf8b9c6a972eb940",
+        "type": "mqtt out",
+        "z": "2646b173d9719fae",
+        "name": "Publisher",
+        "topic": "",
+        "qos": "0",
+        "retain": "",
+        "respTopic": "",
+        "contentType": "",
+        "userProps": "",
+        "correl": "",
+        "expiry": "",
+        "broker": "0c8942358196da6d",
+        "x": 320,
+        "y": 380,
+        "wires": []
+    },
+    {
+        "id": "dd87b75b713318d6",
+        "type": "inject",
+        "z": "2646b173d9719fae",
+        "name": "Test Message",
+        "props": [
+            {
+                "p": "topic",
+                "vt": "str"
+            },
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "/test-topic",
+        "payload": "Test message",
+        "payloadType": "str",
+        "x": 130,
+        "y": 380,
+        "wires": [
+            [
+                "cf8b9c6a972eb940"
+            ]
+        ]
+    },
+    {
+        "id": "0c8942358196da6d",
+        "type": "mqtt-broker",
+        "name": "",
+        "broker": "127.0.0.1",
+        "port": "8883",
+        "tls": "64953e5fc7f98b8e",
+        "clientid": "",
+        "autoConnect": true,
+        "usetls": true,
+        "protocolVersion": "4",
+        "keepalive": "60",
+        "cleansession": true,
+        "autoUnsubscribe": true,
+        "birthTopic": "",
+        "birthQos": "0",
+        "birthRetain": "false",
+        "birthPayload": "",
+        "birthMsg": {},
+        "closeTopic": "",
+        "closeQos": "0",
+        "closeRetain": "false",
+        "closePayload": "",
+        "closeMsg": {},
+        "willTopic": "",
+        "willQos": "0",
+        "willRetain": "false",
+        "willPayload": "",
+        "willMsg": {},
+        "userProps": "",
+        "sessionExpiry": ""
+    },
+    {
+        "id": "64953e5fc7f98b8e",
+        "type": "tls-config",
+        "name": "TLS config",
+        "cert": "",
+        "key": "",
+        "ca": "",
+        "certname": "",
+        "keyname": "",
+        "caname": "ca.crt",
+        "servername": "",
+        "verifyservercert": false,
+        "alpnprotocol": ""
+    }
+]

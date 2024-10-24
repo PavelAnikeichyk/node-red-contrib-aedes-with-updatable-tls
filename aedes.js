@@ -48,7 +48,7 @@ module.exports = function (RED) {
     }
   }
 
-  function AedesBrokerNode (config) {
+  function AedesBrokerNodeWithUpdatableTls (config) {
     RED.nodes.createNode(this, config);
     this.mqtt_port = parseInt(config.mqtt_port, 10);
     this.mqtt_ws_port = parseInt(config.mqtt_ws_port, 10);
@@ -75,8 +75,173 @@ module.exports = function (RED) {
 
     const node = this;
 
-    const aedesSettings = {};
+    let broker;
+    let server;
     const serverOptions = {};
+
+    // Function to start the broker
+    function startBroker() {
+      const aedesSettings = {};
+      broker = aedes.createBroker(aedesSettings);
+
+      // Start server based on TLS settings
+      if (node.usetls) {
+        server = tls.createServer(serverOptions, broker.handle);
+      } else {
+        server = net.createServer(broker.handle);
+      }
+
+      if (node.mqtt_port) {
+        server.listen(node.mqtt_port, function () {
+          node.log('Binding aedes mqtt server on port: ' + config.mqtt_port);
+          node.status({ 
+            fill: 'green', 
+            shape: 'dot', 
+            text: 'node-red:common.status.connected' 
+          });
+        });
+      }
+
+      broker.on('client', function (client) {
+        const msg = {
+          topic: 'client',
+          payload: {
+            client
+          }
+        };
+        node.send([msg, null]);
+      });
+
+      broker.on('clientReady', function (client) {
+        const msg = {
+          topic: 'clientReady',
+          payload: {
+            client
+          }
+        };
+        node.status({
+          fill: 'green',
+          shape: 'dot',
+          text: RED._('aedes-mqtt-broker.status.connected', { count: broker.connectedClients })
+        });
+        node.send([msg, null]);
+      });
+  
+      broker.on('clientDisconnect', function (client) {
+        const msg = {
+          topic: 'clientDisconnect',
+          payload: {
+            client
+          }
+        };
+        node.send([msg, null]);
+        node.status({
+          fill: 'green',
+          shape: 'dot',
+          text: RED._('aedes-mqtt-broker.status.connected', { count: broker.connectedClients })
+        });
+      });
+  
+      broker.on('clientError', function (client, err) {
+        const msg = {
+          topic: 'clientError',
+          payload: {
+            client,
+            err
+          }
+        };
+        node.send([msg, null]);
+        node.status({
+          fill: 'green',
+          shape: 'dot',
+          text: RED._('aedes-mqtt-broker.status.connected', { count: broker.connectedClients })
+        });
+      });
+  
+      broker.on('connectionError', function (client, err) {
+        const msg = {
+          topic: 'connectionError',
+          payload: {
+            client,
+            err
+          }
+        };
+        node.send([msg, null]);
+        node.status({
+          fill: 'green',
+          shape: 'dot',
+          text: RED._('aedes-mqtt-broker.status.connected', { count: broker.connectedClients })
+        });
+      });
+  
+      broker.on('keepaliveTimeout', function (client) {
+        const msg = {
+          topic: 'keepaliveTimeout',
+          payload: {
+            client
+          }
+        };
+        node.send([msg, null]);
+        node.status({
+          fill: 'green',
+          shape: 'dot',
+          text: RED._('aedes-mqtt-broker.status.connected', { count: broker.connectedClients })
+        });
+      });
+  
+      broker.on('subscribe', function (subscription, client) {
+        const msg = {
+          topic: 'subscribe',
+          payload: {
+            topic: subscription.topic,
+            qos: subscription.qos,
+            client
+          }
+        };
+        node.send([msg, null]);
+      });
+  
+      broker.on('unsubscribe', function (subscription, client) {
+        const msg = {
+          topic: 'unsubscribe',
+          payload: {
+            topic: subscription.topic,
+            qos: subscription.qos,
+            client
+          }
+        };
+        node.send([msg, null]);
+      });
+
+      broker.on('closed', function () {
+        node.debug('Closed event');
+      });
+    } // end startBroker
+
+    // Function to stop the broker gracefully
+    function stopBroker(done) {
+      if (broker) {
+        broker.close(function () {
+          node.log('Unbinding aedes mqtt server from port: ' + config.mqtt_port);
+          if (server) {
+            server.close(function () {
+              node.log('Broker stopped');
+              node.status({ 
+                fill: 'red', 
+                shape: 'ring', 
+                text: 'MQTT broker stopped' 
+              });
+              if (done) done();
+            });
+          }
+        });
+      } else if (done) {
+          done();
+      }
+    }
+
+    // Start the broker initially
+    startBroker();
 
     if ((config.persistence_bind === 'mongodb') && config.dburl) {
       aedesSettings.persistence = MongoPersistence({
@@ -103,13 +268,20 @@ module.exports = function (RED) {
       serverOptions.key = this.key;
     }
 
-    const broker = aedes.createBroker(aedesSettings);
-    let server;
-    if (this.usetls) {
-      server = tls.createServer(serverOptions, broker.handle);
-    } else {
-      server = net.createServer(broker.handle);
-    }
+    node.on('input', function(msg) {
+      if (msg.tls_certificate && msg.tls_private_key && node.usetls) {
+        node.warn('Received new TLS certificates. Broker will be restarted.');
+        
+        // Update the TLS credentials
+        serverOptions.cert = msg.tls_certificate;
+        serverOptions.key = msg.tls_private_key;
+
+        // Stop the current broker and restart it with the new settings
+        stopBroker(function () {
+            startBroker();  // Restart with updated TLS settings
+        });
+      }
+    });
 
     let wss = null;
     let httpServer = null;
@@ -185,13 +357,6 @@ module.exports = function (RED) {
       }
     });
 
-    if (this.mqtt_port) {
-      server.listen(this.mqtt_port, function () {
-        node.log('Binding aedes mqtt server on port: ' + config.mqtt_port);
-        node.status({ fill: 'green', shape: 'dot', text: 'node-red:common.status.connected' });
-      });
-    }
-
     if (this.credentials && this.username && this.password) {
       broker.authenticate = function (client, username, password, callback) {
         const authorized = (username === node.username && password && password.toString() === node.password);
@@ -200,118 +365,7 @@ module.exports = function (RED) {
         }
         callback(null, authorized);
       };
-    }
-
-    broker.on('client', function (client) {
-      const msg = {
-        topic: 'client',
-        payload: {
-          client
-        }
-      };
-      node.send([msg, null]);
-    });
-
-    broker.on('clientReady', function (client) {
-      const msg = {
-        topic: 'clientReady',
-        payload: {
-          client
-        }
-      };
-      node.status({
-        fill: 'green',
-        shape: 'dot',
-        text: RED._('aedes-mqtt-broker.status.connected', { count: broker.connectedClients })
-      });
-      node.send([msg, null]);
-    });
-
-    broker.on('clientDisconnect', function (client) {
-      const msg = {
-        topic: 'clientDisconnect',
-        payload: {
-          client
-        }
-      };
-      node.send([msg, null]);
-      node.status({
-        fill: 'green',
-        shape: 'dot',
-        text: RED._('aedes-mqtt-broker.status.connected', { count: broker.connectedClients })
-      });
-    });
-
-    broker.on('clientError', function (client, err) {
-      const msg = {
-        topic: 'clientError',
-        payload: {
-          client,
-          err
-        }
-      };
-      node.send([msg, null]);
-      node.status({
-        fill: 'green',
-        shape: 'dot',
-        text: RED._('aedes-mqtt-broker.status.connected', { count: broker.connectedClients })
-      });
-    });
-
-    broker.on('connectionError', function (client, err) {
-      const msg = {
-        topic: 'connectionError',
-        payload: {
-          client,
-          err
-        }
-      };
-      node.send([msg, null]);
-      node.status({
-        fill: 'green',
-        shape: 'dot',
-        text: RED._('aedes-mqtt-broker.status.connected', { count: broker.connectedClients })
-      });
-    });
-
-    broker.on('keepaliveTimeout', function (client) {
-      const msg = {
-        topic: 'keepaliveTimeout',
-        payload: {
-          client
-        }
-      };
-      node.send([msg, null]);
-      node.status({
-        fill: 'green',
-        shape: 'dot',
-        text: RED._('aedes-mqtt-broker.status.connected', { count: broker.connectedClients })
-      });
-    });
-
-    broker.on('subscribe', function (subscription, client) {
-      const msg = {
-        topic: 'subscribe',
-        payload: {
-          topic: subscription.topic,
-          qos: subscription.qos,
-          client
-        }
-      };
-      node.send([msg, null]);
-    });
-
-    broker.on('unsubscribe', function (subscription, client) {
-      const msg = {
-        topic: 'unsubscribe',
-        payload: {
-          topic: subscription.topic,
-          qos: subscription.qos,
-          client
-        }
-      };
-      node.send([msg, null]);
-    });
+    } 
 
     if (this.wires && this.wires[1] && this.wires[1].length > 0) {
       node.log('Publish output wired. Enable broker publish event messages.');
@@ -326,10 +380,6 @@ module.exports = function (RED) {
         node.send([null, msg]);
       });
     }
-
-    broker.on('closed', function () {
-      node.debug('Closed event');
-    });
 
     this.on('close', function (done) {
       process.nextTick(function onCloseDelayed () {
@@ -377,7 +427,7 @@ module.exports = function (RED) {
     });
   }
 
-  RED.nodes.registerType('aedes broker', AedesBrokerNode, {
+  RED.nodes.registerType('aedes broker with updatable tls', AedesBrokerNodeWithUpdatableTls, {
     credentials: {
       username: { type: 'text' },
       password: { type: 'password' },

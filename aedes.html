@@ -14,7 +14,7 @@
   limitations under the License.
 -->
 
-<script type="text/x-red" data-template-name="aedes broker">
+<script type="text/x-red" data-template-name="aedes broker with updatable tls">
     <div class="form-row">
         <label for="node-input-name"><i class="fa fa-tag"></i> <span data-i18n="node-red:common.label.name"></span></label>
         <input type="text" id="node-input-name" data-i18n="[placeholder]node-red:common.label.name">
@@ -100,7 +100,7 @@
 </script>
 
 <script type="text/javascript">
-  RED.nodes.registerType('aedes broker', {
+  RED.nodes.registerType('aedes broker with updatable tls', {
     category: 'network',
     defaults: {
       name: { value: '' },
@@ -141,11 +141,11 @@
       keydata: { type: 'text' }
     },
     color: '#d8bfd8',
-    inputs: 0,
+    inputs: 1,
     outputs: 2,
     icon: 'aedes.png',
     label: function () {
-      return this.name || 'Aedes MQTT broker';
+      return this.name || 'Aedes MQTT broker with updatable tls';
     },
     labelStyle: function () {
       return this.name ? 'node_label_italic' : '';
