@@ -24,12 +24,17 @@ npm install node-red-contrib-aedes
 ```
 ## Flows
 Just put this node on Node-RED and hit the deploy button. The MQTT Broker will run on your Node-RED instance.
+
 ![flows](./flows.png)
+
+If the TLS certificates updating is needed the flow could be like this:
+
+![flow with TLS updating](./flows_with_tls_updating.png)
 
 ## Features
 - Standard TCP Support
 - WebSocket Support via port or path
-- SSL / TLS
+- SSL / TLS (with updating certificate and private key)
 - Message Persistence (In-memory, LevelDB or MongoDB)
  
 For more information see [Aedes](https://github.com/moscajs/aedes/blob/master/README.md#features).
